@@ -1,0 +1,83 @@
+version: '3'
+
+services:
+  ###########################
+  ### NGINX proxy server
+  nginx:
+    container_name: nginx
+    hostname: nginx
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./nginx
+    ports:
+      - 3050:80
+    depends_on:
+      - front
+      - nodejs
+    networks:
+      - app-network
+
+  ###########################
+  ### FRONTEND REACT APP
+  front:
+    container_name: front
+    hostname: front
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./client
+    ports:
+      - 3000:3000
+    environment:
+      DANGEROUSLY_DISABLE_HOST_CHECK: 'true'
+    volumes:
+      - ./client:/app:rw
+      - /app/node_modules/
+    networks:
+      - app-network
+
+  ###########################
+  ### NODEJS BACKEND APP
+  nodejs:
+    container_name: nodejs
+    hostname: nodejs
+    build:
+      dockerfile: Dockerfile.dev
+      context: ./backend
+    environment:
+      NODE_ENV: development
+      DATABASE_USERNAME: user
+      DATABASE_PASSWORD: password
+      DATABASE_HOST: db
+      DATABASE_NAME: mongodata
+      DATABASE_CLIENT: mongodb
+      DATABASE_PORT: 27017
+    ports:
+      - 5000:5000
+    depends_on:
+      - db
+    volumes:
+      - ./backend:/nodejs/app:rw
+      - /nodejs/app/node_modules/
+    networks:
+      - app-network
+
+  db:
+    container_name: db
+    hostname: db
+    image: mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: user
+      MONGO_INITDB_ROOT_PASSWORD: password
+    ports:
+      - '27017:27017'
+    networks:
+      - app-network
+    volumes:
+      - dbdata:/data/db
+
+volumes:
+  dbdata:
+
+networks:
+  app-network:
+    driver: bridge
